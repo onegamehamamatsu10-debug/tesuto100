@@ -1,0 +1,212 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+
+  <title>Unity Web Player | 歯のゲーム</title>
+  <link rel="shortcut icon" href="TemplateData/favicon.ico">
+  <link rel="stylesheet" href="TemplateData/style.css">
+</head>
+
+<body>
+  <div id="unity-container" class="unity-desktop">
+    <div id="unity-fullscreen-container">
+      <canvas id="unity-canvas"
+              width="1080"
+              height="1920"
+              tabindex="-1"></canvas>
+
+      <div id="unity-loading-container">
+        <div id="unity-loading-bar">
+          <div id="unity-logo"></div>
+          <div id="unity-progress-bar-empty">
+            <div id="unity-progress-bar-full"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="unity-warning"></div>
+
+    <div id="unity-footer">
+      <div id="unity-logo-title-footer"></div>
+      <div id="unity-fullscreen-button"></div>
+      <div id="unity-build-title">歯のゲーム</div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.querySelector("#unity-canvas");
+    const fullscreenContainer =
+      document.querySelector("#unity-fullscreen-container");
+
+    const unityContainer =
+      document.querySelector("#unity-container");
+
+    const isMobile =
+      /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+    if (isMobile) {
+      unityContainer.className = "unity-mobile";
+      canvas.className = "unity-mobile";
+    }
+
+    // HTMLに設定されている基準画面サイズ
+    const BASE_WIDTH = 1080;
+    const BASE_HEIGHT = 1920;
+
+    // ブラウザ表示領域に9:16で収める
+    function resizeUnityCanvas() {
+      const viewport = window.visualViewport;
+
+      const availableWidth = viewport
+        ? viewport.width
+        : document.documentElement.clientWidth;
+
+      const availableHeight = viewport
+        ? viewport.height
+        : document.documentElement.clientHeight;
+
+      if (availableWidth <= 0 || availableHeight <= 0) {
+        return;
+      }
+
+      const scale = Math.min(
+        availableWidth / BASE_WIDTH,
+        availableHeight / BASE_HEIGHT
+      );
+
+      const displayWidth = BASE_WIDTH * scale;
+      const displayHeight = BASE_HEIGHT * scale;
+
+      fullscreenContainer.style.width = displayWidth + "px";
+      fullscreenContainer.style.height = displayHeight + "px";
+
+      unityContainer.style.width = displayWidth + "px";
+
+      if (isMobile) {
+        unityContainer.style.height = displayHeight + "px";
+      }
+    }
+
+    resizeUnityCanvas();
+
+    window.addEventListener("resize", resizeUnityCanvas);
+    window.addEventListener(
+      "orientationchange",
+      resizeUnityCanvas
+    );
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener(
+        "resize",
+        resizeUnityCanvas
+      );
+    }
+
+    // Unity標準の警告・エラー表示
+    function unityShowBanner(msg, type) {
+      const warningBanner =
+        document.querySelector("#unity-warning");
+
+      function updateBannerVisibility() {
+        warningBanner.style.display =
+          warningBanner.children.length ? "block" : "none";
+      }
+
+      const div = document.createElement("div");
+      div.innerHTML = msg;
+      warningBanner.appendChild(div);
+
+      if (type === "error") {
+        div.style = "background: red; padding: 10px;";
+      } else {
+        if (type === "warning") {
+          div.style =
+            "background: yellow; padding: 10px;";
+        }
+
+        setTimeout(function () {
+          if (div.parentNode === warningBanner) {
+            warningBanner.removeChild(div);
+          }
+          updateBannerVisibility();
+        }, 5000);
+      }
+
+      updateBannerVisibility();
+    }
+
+    // 既存のUnity WebGLビルド設定
+    var buildUrl = "Build";
+    var loaderUrl = buildUrl + "/テスト１.loader.js";
+
+    var config = {
+      arguments: [],
+      dataUrl: buildUrl + "/テスト１.data.unityweb",
+      frameworkUrl:
+        buildUrl + "/テスト１.framework.js.unityweb",
+      codeUrl: buildUrl + "/テスト１.wasm.unityweb",
+      streamingAssetsUrl: "StreamingAssets",
+
+      fullscreenElementID:
+        "unity-fullscreen-container",
+
+      companyName: "DefaultCompany",
+      productName: "歯のゲーム",
+      productVersion: "1.0",
+      showBanner: unityShowBanner
+    };
+
+    // devicePixelRatioは変更しない
+    // matchWebGLToCanvasSizeも変更しない
+    // Unity標準の描画サイズ同期を維持
+
+    var script = document.createElement("script");
+    script.src = loaderUrl;
+
+    script.onload = () => {
+      const loadingContainer =
+        document.querySelector("#unity-loading-container");
+
+      const progressBarFull =
+        document.querySelector("#unity-progress-bar-full");
+
+      createUnityInstance(canvas, config, (progress) => {
+        if (progress < 1) {
+          loadingContainer.style.display = "block";
+          progressBarFull.style.width =
+            100 * progress + "%";
+        } else {
+          loadingContainer.style.display = "none";
+        }
+      }).then((unityInstance) => {
+
+        document.querySelector(
+          "#unity-fullscreen-button"
+        ).onclick = () => {
+          unityInstance.SetFullscreen(1);
+        };
+
+        resizeUnityCanvas();
+
+      }).catch((message) => {
+        alert(message);
+      });
+    };
+
+    script.onerror = () => {
+      unityShowBanner(
+        "Unityの読み込みに失敗しました。",
+        "error"
+      );
+    };
+
+    document.body.appendChild(script);
+  </script>
+</body>
+</html>
